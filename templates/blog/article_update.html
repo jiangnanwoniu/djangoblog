@@ -14,7 +14,7 @@
     {% include "blog/nav.html" %}
     <div id="main" class="container col-md-offset-2 col-md-8">
         {% block main %}
-                <form method="POST" action="{% url 'article-edit' %}">
+                <form method="POST" action="{% url 'article-update' articleID %}">
             {% csrf_token %}
                 <div class="panel-title">
                     <h2>发表文章</h2>

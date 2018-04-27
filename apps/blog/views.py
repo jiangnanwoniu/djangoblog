@@ -9,6 +9,7 @@ from djangoblog import settings
 from django.core.cache import caches
 from django.contrib import messages
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 
 from blog.forms import UEditorForm
 
@@ -112,3 +113,51 @@ def ArticleEdit(request):
     else:
         ueditorform = UEditorForm()
     return render(request,'blog/article_edit.html',{'form': ueditorform})
+
+class IndexViewMine(BaseMixin, ListView):
+    template_name = 'blog/index.html'
+    context_object_name = 'article_list'
+    paginate_by = settings.PAGE_NUM
+
+    def get_queryset(self):
+        article_list = Article.objects.filter(author_id=self.kwargs['author_id'],status=0).order_by('-create_time')
+        return article_list
+
+    def get_context_data(self, **kwargs):
+        return super(IndexViewMine, self).get_context_data(**kwargs)
+
+def ArticleUpdate(request, article_id):
+    if request.method == "POST":
+        ueditorform = UEditorForm(request.POST)
+        user = request.user
+
+        if ueditorform.is_valid():
+            article = Article.objects.filter(id=article_id).update(author_id=user.pk,
+                                             category_id=ueditorform.clean()['category'],
+                                             title=ueditorform.clean()['title'],
+                                             article_from=ueditorform.clean()['article_from'],
+                                             summary=ueditorform.clean()['summary'],
+                                             tags=ueditorform.clean()['tags'],
+                                             content=ueditorform.clean()['content'],
+                                             update_time=timezone.now(),
+                                             )
+            if article is not None:
+                user.topic_num += 1
+                user.save()
+                messages.success(request, '新密码设置成功！请重新登录')
+                return HttpResponseRedirect(reverse('index-view'))
+    else:
+        article_old = Article.objects.get(id=article_id)
+        data = {'category': article_old.category,
+                'title':article_old.title,
+                'article_from':article_old.article_from,
+                'summary':article_old.summary,
+                'tags':article_old.tags,
+                'content':article_old.content
+                }
+        ueditorform = UEditorForm(data)
+    return render(request,'blog/article_update.html',{'form': ueditorform, 'articleID': article_id})
+
+def ArticleDelete(request, article_id):
+    Article.objects.filter(id=article_id).delete()
+    return HttpResponseRedirect(reverse('index-view'))
